@@ -3,8 +3,8 @@ use burn::{
     module::Module,
     nn,
     tensor::{Device, Tensor},
+    prelude::Backend
 };
-use std::sync::Arc;
 
 
 // CONFIG ==================================
@@ -25,15 +25,15 @@ impl Default for MlpConfig {
 }
 
 impl MlpConfig {
-    pub fn init(& self, device: & Device) -> MlpModule {
-        let gate_proj: nn::Linear = nn::LinearConfig::new(self.hidden_size, self.intermediate_size).init(device);
-        let up_prog: nn::Linear = nn::LinearConfig::new(self.hidden_size, self.intermediate_size).init(device);
-        let down_prog: nn::Linear = nn::LinearConfig::new(self.intermediate_size, self.hidden_size).init(device);
+    pub fn init<B: Backend>(&self, device: &Device<B>) -> MlpModule<B> {
+        let gate_proj: nn::Linear<B> = nn::LinearConfig::new(self.hidden_size, self.intermediate_size).init(device);
+        let up_proj: nn::Linear<B> = nn::LinearConfig::new(self.hidden_size, self.intermediate_size).init(device);
+        let down_proj: nn::Linear<B> = nn::LinearConfig::new(self.intermediate_size, self.hidden_size).init(device);
 
         MlpModule { // Defined below
             gate_proj,
-            up_prog,
-            down_prog,
+            up_proj,
+            down_proj,
         }
     }
 }
@@ -42,23 +42,27 @@ impl MlpConfig {
 // MODULE ==================================
 
 #[derive(Module, Debug)]
-pub struct MlpModule {
-    gate_proj: nn::Linear,
-    up_proj: nn::Linear,
-    down_prog: nn::Linear,
+pub struct MlpModule<B: Backend> {
+    gate_proj: nn::Linear<B>,
+    up_proj: nn::Linear<B>,
+    down_proj: nn::Linear<B>,
 }
 
-impl MlpModule {
-    pub fn forward(& self, input: Tensor<2>) -> Tensor<2> {
-        // apply the input to the two parallel gating and up layers, therefore clone to reuse
-        let gate = self.gate_proj.forward(input.clone());
-        let up = self.up_prog.forward(input);
+impl<B: Backend> MlpModule<B> {
+    pub fn forward(& self, input: Tensor<B, 2>) -> Tensor<B, 2> {
 
-        // Apply SiLU activation to up projection (gate * sigmoid(gate))
-        let silu_up = silu(up);
+        // apply the input to the two parallel gating and up layers, therefore clone to reuse input
+        let gate = self.gate_proj.forward(input.clone());
+        let up = self.up_proj.forward(input);
+
+        // Apply SiLU activation to gate projection (gate * sigmoid(gate))
+        let silu_gate = silu(gate);
+
+        // apply hadamard product so the gate can actually gate off the standard up proj
+        let comb = silu_gate * up;
 
         // Apply final linear transformation for the output
-        self.down_prog(silu_up)
+        self.down_proj.forward(comb)
     }
 
 }
@@ -67,7 +71,13 @@ impl MlpModule {
 // Helpers ===============================
 
 /// Sigmoid Linear Unit (SiLU) on a matrix (i.e. R^2)
-fn silu(A: Tensor<2>) -> Tensor<2> {
-    let S = A.clone().sigmoid();
-    A * S
+fn silu<B: Backend>(a_matrix: Tensor<B, 2>) -> Tensor<B, 2> {
+    let s_matrix = sigmoid::<B>(a_matrix.clone()); // sigmoid defined below
+    a_matrix * s_matrix
 }
+
+/// sigmoid
+fn sigmoid<B: Backend>(b_matrix: Tensor<B, 2>) -> Tensor<B, 2> {
+    unimplemented!()
+}
+
