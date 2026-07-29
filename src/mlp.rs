@@ -9,8 +9,7 @@ use burn::{
 
 // CONFIG ==================================
 
-#[derive(Config, Debug)]
-pub struct MlpConfig {
+#[derive(Config, Debug)] pub struct MlpConfig {
     pub hidden_size: usize,
     pub intermediate_size: usize,
 }
@@ -78,6 +77,8 @@ fn silu<B: Backend>(a_matrix: Tensor<B, 2>) -> Tensor<B, 2> {
 
 /// sigmoid
 fn sigmoid<B: Backend>(b_matrix: Tensor<B, 2>) -> Tensor<B, 2> {
-    unimplemented!()
+    let neg_mat = b_matrix.clone().neg();
+    let ones = Tensor::ones_like(&neg_mat);
+    ones.clone() / (ones + neg_mat.exp())
 }
 
