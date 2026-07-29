@@ -2,10 +2,12 @@
 name = "cohere2-burn"
 version = "0.1.0"
 edition = "2021"
+authors = ["Jozef Lumaj"]
+license.workspace = true
+description = "Cohere 2 Architecture"
 
-[workspace]
-members = ["docs/burn/crates/burn", "docs/burn/examples/"]
-resolver = "2"
-
-[workspace.dependencies]
-burn = { path = "docs/burn/crates/burn", version = "0.22.0", default-features = false }
+[dependencies]
+burn = {version = "0.21.0", default-features = false, features = ["std", "vulkan"] }
+#serde = {version = "1", default-features = false}
+#serde_json = "1"
+#itertools = {version = "0.14", default-features = false}
