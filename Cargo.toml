@@ -7,6 +7,7 @@ description = "Cohere 2 Architecture"
 
 [dependencies]
 burn = {version = "0.21.0", default-features = false, features = ["std", "vulkan"] }
+tokenizers = "0.22.2"
 #serde = {version = "1", default-features = false}
 #serde_json = "1"
 #itertools = {version = "0.14", default-features = false}
